@@ -15,10 +15,17 @@ MainWindow::MainWindow(QWidget *parent) :
     winSelected = false;
     cap->set(CV_CAP_PROP_FRAME_WIDTH, 320);
     cap->set(CV_CAP_PROP_FRAME_HEIGHT, 240);
+
     imgS = new QImage(320,240, QImage::Format_RGB888);
     visorS = new RCDraw(320,240, imgS, ui->imageFrameS);
     imgD = new QImage(320,240, QImage::Format_RGB888);
     visorD = new RCDraw(320,240, imgD, ui->imageFrameD);
+
+    imgS2 = new QImage(320,240, QImage::Format_RGB888);
+    visorS2 = new RCDraw(320,240, imgS2, ui->imageFrameS);
+    imgD2 = new QImage(320,240, QImage::Format_RGB888);
+    visorD2 = new RCDraw(320,240, imgD2, ui->imageFrameD);
+
 
     colorImage.create(240,320,CV_8UC3);
     grayImage.create(240,320,CV_8UC1);
@@ -26,6 +33,9 @@ MainWindow::MainWindow(QWidget *parent) :
     destGrayImage.create(240,320,CV_8UC1);
     gray2ColorImage.create(240,320,CV_8UC3);
     destGray2ColorImage.create(240,320,CV_8UC3);
+
+    imageS.create(240,320,CV_8UC1);
+    imageD.create(240,320,CV_8UC1);
 
     regions.create(240,320,CV_32SC1);
 
@@ -49,6 +59,11 @@ MainWindow::~MainWindow()
     delete visorD;
     delete imgS;
     delete imgD;
+    delete visorS2;
+    delete visorD2;
+    delete imgS2;
+    delete imgD2;
+
 
 }
 
@@ -82,7 +97,8 @@ void MainWindow::compute()
         cvtColor(destGrayImage,destGray2ColorImage, CV_GRAY2RGB);
         memcpy(imgS->bits(), gray2ColorImage.data , 320*240*3*sizeof(uchar));
         memcpy(imgD->bits(), destGray2ColorImage.data , 320*240*3*sizeof(uchar));
-
+        memcpy(imgS->bits(), grayImage.data , 320*240*3*sizeof(uchar));
+        memcpy(imgD->bits(), destGrayImage.data , 320*240*3*sizeof(uchar));
     }
 
     if(winSelected)
@@ -153,18 +169,24 @@ void MainWindow::deselectWindow()
 
 void MainWindow::load_image()
 {
-    QString fileName = QFileDialog::getOpenFileName(this,
+    QStringList files = QFileDialog::getOpenFileNames(this,
            tr("Open File"), "",
            tr("All Files (*)"));
 
-    if (fileName.isEmpty())
+    if (files.size() > 1)
            return;
     else {
 
-           colorImage = imread(fileName.toStdString(), CV_LOAD_IMAGE_COLOR);
+           colorImage = imread(files[0].toStdString(), CV_LOAD_IMAGE_COLOR);
            cv::resize(colorImage, colorImage, Size(320,240));
            cvtColor(colorImage, colorImage, CV_BGR2RGB);
            cvtColor(colorImage, grayImage, CV_BGR2GRAY);
+
+           colorImage = imread(files[1].toStdString(), CV_LOAD_IMAGE_COLOR);
+           cv::resize(colorImage, colorImage, Size(320,240));
+           cvtColor(colorImage, colorImage, CV_BGR2RGB);
+           cvtColor(colorImage, destGrayImage, CV_BGR2GRAY);
+
 
            ui->captureButton->setText("Start capture");
            capture = false;
@@ -228,7 +250,7 @@ void MainWindow::create_region(Point inicial, int numberRegion){
         pAct = list[i];
 
         if(pAct.x >=0 && pAct.x<grayImage.cols && pAct.y>=0 && pAct.y<grayImage.rows && regions.at<int>(pAct) == -1){
-            if(ui->checkBoxStatistics->isChecked()){
+            //if(ui->checkBoxStatistics->isChecked()){
 
                 avNew = (av * cont + grayImage.at<uchar>(pAct))/(cont+1);
 
@@ -247,7 +269,7 @@ void MainWindow::create_region(Point inicial, int numberRegion){
                         list.push_back(Point(pAct.x, pAct.y+1));
                     }
                 }
-            }else{
+            /*}else{
                 if(abs(grayImage.at<uchar>(pAct.y, pAct.x)-valueGray) < 30)
                 {
                     regions.at<int>(pAct.y, pAct.x) = numberRegion;
@@ -258,7 +280,7 @@ void MainWindow::create_region(Point inicial, int numberRegion){
                         list.push_back(Point(pAct.x, pAct.y+1));
                     }
                 }
-            }
+            }*/
         }
         i++;
     }
@@ -274,12 +296,12 @@ void MainWindow::create_region(Point inicial, int numberRegion){
 }
 
 void MainWindow::draw_borders(){
-    if(ui->checkBoxBorder->isChecked()){
+    //if(ui->checkBoxBorder->isChecked()){
         find_borders();
 
-        if(ui->checkBoxMerge->isChecked())
+        //if(ui->checkBoxMerge->isChecked())
             merge();
-    }
+    //}
 
     for (int var = 0; var < regions.rows; ++var) {
         for (int var2 = 0; var2 < regions.cols; ++var2) {
@@ -287,13 +309,13 @@ void MainWindow::draw_borders(){
         }
     }
 
-    if(ui->checkBoxBorder->isChecked()){
+    //if(ui->checkBoxBorder->isChecked()){
         for(uint i = 0; i<regionsList.size();i++){
             for(uint j = 0; j<regionsList.at(i).frontier.size(); j++){
                 visorD->drawSquare(QPointF(regionsList.at(i).frontier.at(j).x-1,regionsList.at(i).frontier.at(j).y-1), 2,2, Qt::green );
             }
         }
-    }
+    //}
 }
 
 void MainWindow::find_borders(){

@@ -48,7 +48,9 @@ private:
     VideoCapture *cap;
     RCDraw *visorS, *visorD;
     QImage *imgS, *imgD;
-    Mat colorImage, grayImage, destColorImage, destGrayImage;
+    RCDraw *visorS2, *visorD2;
+    QImage *imgS2, *imgD2;
+    Mat colorImage, grayImage, destColorImage, destGrayImage, imageS, imageD;
     Mat gray2ColorImage, destGray2ColorImage;
     bool capture, showColorImage, winSelected;
     Rect imageWindow;
