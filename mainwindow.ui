@@ -45,49 +45,11 @@
     <enum>QFrame::Raised</enum>
    </property>
   </widget>
-  <widget class="QPushButton" name="captureButton">
-   <property name="geometry">
-    <rect>
-     <x>740</x>
-     <y>20</y>
-     <width>131</width>
-     <height>31</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>Stop Capture</string>
-   </property>
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="checked">
-    <bool>true</bool>
-   </property>
-  </widget>
-  <widget class="QPushButton" name="colorButton">
-   <property name="geometry">
-    <rect>
-     <x>740</x>
-     <y>60</y>
-     <width>131</width>
-     <height>31</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>Color Image</string>
-   </property>
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="checked">
-    <bool>false</bool>
-   </property>
-  </widget>
   <widget class="QPushButton" name="loadButton">
    <property name="geometry">
     <rect>
      <x>740</x>
-     <y>100</y>
+     <y>20</y>
      <width>131</width>
      <height>31</height>
     </rect>
@@ -106,7 +68,7 @@
    <property name="geometry">
     <rect>
      <x>750</x>
-     <y>230</y>
+     <y>150</y>
      <width>111</width>
      <height>20</height>
     </rect>
@@ -115,7 +77,7 @@
     <string>Show Corners</string>
    </property>
   </widget>
-  <widget class="QFrame" name="imageFrameS_2">
+  <widget class="QFrame" name="imageFrameS2">
    <property name="geometry">
     <rect>
      <x>20</x>
@@ -131,7 +93,7 @@
     <enum>QFrame::Raised</enum>
    </property>
   </widget>
-  <widget class="QFrame" name="imageFrameD_2">
+  <widget class="QFrame" name="imageFrameD2">
    <property name="geometry">
     <rect>
      <x>390</x>
@@ -151,7 +113,7 @@
    <property name="geometry">
     <rect>
      <x>740</x>
-     <y>140</y>
+     <y>60</y>
      <width>131</width>
      <height>31</height>
     </rect>
@@ -170,7 +132,7 @@
    <property name="geometry">
     <rect>
      <x>740</x>
-     <y>180</y>
+     <y>100</y>
      <width>131</width>
      <height>31</height>
     </rect>

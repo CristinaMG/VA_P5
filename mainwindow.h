@@ -45,25 +45,18 @@ private:
     Ui::MainWindow *ui;
     QTimer timer;
 
-    VideoCapture *cap;
     RCDraw *visorS, *visorD;
     QImage *imgS, *imgD;
     RCDraw *visorS2, *visorD2;
     QImage *imgS2, *imgD2;
-    Mat colorImage, grayImage, destColorImage, destGrayImage, imageS, imageD;
+    Mat colorImage, grayImage, destColorImage, destGrayImage, imageS2, imageD2;
     Mat gray2ColorImage, destGray2ColorImage;
-    bool capture, showColorImage, winSelected;
-    Rect imageWindow;
     Mat regions, borders;
     std::vector<region> regionsList;
     std::vector<QMap<int,pair>> maps;
 
 public slots:
     void compute();
-    void start_stop_capture(bool start);
-    void change_color_gray(bool color);
-    void selectWindow(QPointF p, int w, int h);
-    void deselectWindow();
     void load_image();
     void segmentation_image();
     void create_region(Point inicial, int numberRegion);
