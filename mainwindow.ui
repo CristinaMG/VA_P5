@@ -64,7 +64,7 @@
     <bool>false</bool>
    </property>
   </widget>
-  <widget class="QCheckBox" name="checkBoxMerge">
+  <widget class="QCheckBox" name="checkBoxCorners">
    <property name="geometry">
     <rect>
      <x>750</x>

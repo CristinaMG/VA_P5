@@ -20,6 +20,13 @@ namespace Ui {
     class MainWindow;
 }
 
+struct pointHarris{
+    Point p;
+    float HarrisValue;
+};
+
+bool compareHarris(pointHarris a, pointHarris b);
+
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -42,6 +49,8 @@ private:
         float frontier;
     };
 
+
+
     Ui::MainWindow *ui;
     QTimer timer;
 
@@ -52,8 +61,10 @@ private:
     Mat colorImage, grayImage, destColorImage, destGrayImage, imageS2, imageD2;
     Mat gray2ColorImage, destGray2ColorImage;
     Mat regions, borders;
+    Mat cornersLeft;
     std::vector<region> regionsList;
     std::vector<QMap<int,pair>> maps;
+    std::vector<pointHarris> HarrisList;
 
 public slots:
     void compute();
@@ -63,6 +74,10 @@ public slots:
     void draw_borders();
     void find_borders();
     void merge();
+
+    void initDisparity_image();
+    void propDisparity_image();
+    void find_corners();
 };
 
 

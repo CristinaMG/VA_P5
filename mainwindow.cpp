@@ -28,9 +28,13 @@ MainWindow::MainWindow(QWidget *parent) :
 
     regions.create(240,320,CV_32SC1);
 
+    cornersLeft.create(240,320,CV_32FC1);
+
     connect(&timer,SIGNAL(timeout()),this,SLOT(compute()));
 
     connect(ui->loadButton,SIGNAL(clicked(bool)),this,SLOT(load_image()));
+    connect(ui->initDButton,SIGNAL(clicked(bool)),this,SLOT(initDisparity_image()));
+    connect(ui->propDButton,SIGNAL(clicked(bool)),this,SLOT(propDisparity_image()));
 
     timer.start(60);
 
@@ -54,13 +58,15 @@ MainWindow::~MainWindow()
 
 void MainWindow::compute()
 {
-
     regions.setTo(-1);
     regionsList.clear();
     maps.clear();
 
     //segmentation_image();
     //draw_borders();
+    if(ui->checkBoxCorners->isChecked()){
+        //draw_corners();
+    }
 
     cvtColor(grayImage,gray2ColorImage, CV_GRAY2RGB);
     cvtColor(destGrayImage,destGray2ColorImage, CV_GRAY2RGB);
@@ -71,7 +77,6 @@ void MainWindow::compute()
     visorD->update();
     visorS2->update();
     visorD2->update();
-
 }
 
 
@@ -85,6 +90,11 @@ void MainWindow::load_image()
            return;
     else {
            colorImage = imread(files[0].toStdString(), CV_LOAD_IMAGE_COLOR);
+           int anchura = colorImage.cols;
+           //g=3*d*w/320
+           //donde g es nivel de gris que hay que saturar entre 0y 255 para que no se pase
+           //d es la disparidad, no puede ser negativa, siempre >= 0
+           //w es el ancho de la imagen que recibimos inicialmente(anchura)
            cv::resize(colorImage, colorImage, Size(320,240));
            cvtColor(colorImage, grayImage, CV_BGR2GRAY);
 
@@ -210,13 +220,13 @@ void MainWindow::draw_borders(){
         }
     }
 
-    //if(ui->checkBoxBorder->isChecked()){
+    /*if(ui->checkBoxBorder->isChecked()){
         for(uint i = 0; i<regionsList.size();i++){
             for(uint j = 0; j<regionsList.at(i).frontier.size(); j++){
                 visorD->drawSquare(QPointF(regionsList.at(i).frontier.at(j).x-1,regionsList.at(i).frontier.at(j).y-1), 2,2, Qt::green );
             }
         }
-    //}
+    }*/
 }
 
 void MainWindow::find_borders(){
@@ -337,3 +347,49 @@ void MainWindow::merge(){
     find_borders();
 }
 
+void MainWindow::initDisparity_image(){
+    segmentation_image();
+    draw_borders();
+
+    find_corners();
+}
+
+void MainWindow::propDisparity_image(){
+
+}
+
+
+bool compareHarris(pointHarris a, pointHarris b){return a.HarrisValue>b.HarrisValue;}
+
+
+void MainWindow::find_corners(){
+
+    cornerHarris(grayImage, cornersLeft, 3, 3, 0.04);
+
+
+    for(int i = 0; i<cornersLeft.rows; i++){
+        for(int j = 0; j<cornersLeft.cols; j++){
+            if(cornersLeft.at<float>(i,j)>=pow(10, -6)){
+                pointHarris pH;
+                pH.HarrisValue = cornersLeft.at<float>(i,j);
+                pH.p = Point(i,j);
+                HarrisList.push_back(pH);
+            }
+
+            /*if(cornersLeft.at<float>(i,j)>=pow(10, -6)){
+             * i y j tienen que estar entre 6 y 314 y 6 y 234
+                Mat stripe = destGrayImage(cv::Rect(i-6, 0, 320, 13));
+                Mat patch = grayImage(cv::Rect(i-6, j-6, 13, 13));
+                matchTemplate(stripe, patch, result, CV_TM_CCOEFF_NORMED);
+                float min, max;
+                minMaxLoc(&result, min, max);
+                if(max>0.9){
+
+                }
+            }*/
+        }
+    }
+
+    std::sort(HarrisList.begin(), HarrisList.end(), compareHarris);
+
+}
