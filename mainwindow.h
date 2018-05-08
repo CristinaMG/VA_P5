@@ -62,6 +62,7 @@ private:
     Mat gray2ColorImage, destGray2ColorImage;
     Mat regions, borders;
     Mat cornersLeft;
+    Mat fixedPoints;
     std::vector<region> regionsList;
     std::vector<QMap<int,pair>> maps;
     std::vector<pointHarris> HarrisList;
