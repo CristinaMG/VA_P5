@@ -31,6 +31,8 @@ MainWindow::MainWindow(QWidget *parent) :
     cornersLeft.create(240,320,CV_32FC1);
     fixedPoints.create(240,320,CV_8UC1);
 
+    disparity.create(240,320,CV_32FC1);
+
     connect(&timer,SIGNAL(timeout()),this,SLOT(compute()));
 
     connect(ui->loadButton,SIGNAL(clicked(bool)),this,SLOT(load_image()));
@@ -62,15 +64,12 @@ void MainWindow::compute()
     regions.setTo(-1);
     regionsList.clear();
     maps.clear();
-    fixedPoints.setTo(0);
 
     //segmentation_image();
     //draw_borders();
+
     if(ui->checkBoxCorners->isChecked()){
-        //draw_corners();
-        for(uint i = 0; i<HarrisList.size();i++){
-            visorS->drawSquare(QPointF(HarrisList[i].p.x,HarrisList[i].p.y), 2,2, Qt::green );
-        }
+        draw_corners();
     }
 
     cvtColor(grayImage,gray2ColorImage, CV_GRAY2RGB);
@@ -219,11 +218,11 @@ void MainWindow::draw_borders(){
             merge();
     //}
 
-    for (int var = 0; var < regions.rows; ++var) {
-        for (int var2 = 0; var2 < regions.cols; ++var2) {
-            destGrayImage.at<uchar>(var,var2) = regionsList.at(regions.at<int>(var,var2)).gray;
-        }
-    }
+    //for (int var = 0; var < regions.rows; ++var) {
+       // for (int var2 = 0; var2 < regions.cols; ++var2) {
+            //destGrayImage.at<uchar>(var,var2) = regionsList.at(regions.at<int>(var,var2)).gray;
+        //}
+    //}
 
     /*if(ui->checkBoxCorners->isChecked()){
         for(uint i = 0; i<regionsList.size();i++){
@@ -352,6 +351,9 @@ void MainWindow::merge(){
     find_borders();
 }
 
+
+
+
 void MainWindow::initDisparity_image(){
     //segmentation_image();
     //draw_borders();
@@ -368,6 +370,9 @@ bool compareHarris(pointHarris a, pointHarris b){return a.HarrisValue>b.HarrisVa
 
 
 void MainWindow::find_corners(){
+
+    fixedPoints.setTo(0);
+    disparity.setTo(0);
 
     cornerHarris(grayImage, cornersLeft, 5, 3, 0.04);
 
@@ -396,15 +401,10 @@ void MainWindow::find_corners(){
         }
     }
 
-//pintar en rojo
 
-/*
-    if(cornersLeft.at<float>(i,j)>=pow(10, -6)){
-     * i y j tienen que estar entre 6 y 314 y 6 y 234
     for(uint m = 0; m<HarrisList.size(); m++){
         if(HarrisList[m].p.x > 5 && HarrisList[m].p.x < 314 && HarrisList[m].p.y > 5 && HarrisList[m].p.y <234){
-            //Mat stripe = destGrayImage(cv::Rect(HarrisList[m].p.x-6, 0, 320, 13));
-            Mat stripe = destGrayImage(cv::Rect(HarrisList[m].p.x-6, 0, HarrisList[m].p.y, 13));
+            Mat stripe = destGrayImage(cv::Rect(0, HarrisList[m].p.y-6, HarrisList[m].p.x, 13));
             Mat patch = grayImage(cv::Rect(HarrisList[m].p.x-6, HarrisList[m].p.y-6, 13, 13));
             Mat result;
             matchTemplate(stripe, patch, result, CV_TM_CCOEFF_NORMED);
@@ -412,17 +412,21 @@ void MainWindow::find_corners(){
             Point pMin, pMax;
             minMaxLoc(result, &min, &max, &pMin, &pMax);
             if(max>0.9){
-                fixedPoints.at<uchar>(pMax.y, pMax.x) = 1;
+                fixedPoints.at<uchar>(HarrisList[m].p.y, HarrisList[m].p.x) = 1;
+                disparity.at<float>(HarrisList[m].p.y, HarrisList[m].p.x) = HarrisList[m].p.x - (pMax.x + 6) ;
             }
         }
     }
-    for(uint i = 0; i<regionsList.size();i++){
-        for(uint j = 0; j<regionsList.at(i).frontier.size(); j++){
-            if(fixedPoints.at<uchar>(i,j) == 1){
-                visorS->drawSquare(QPointF(i,j), 2,2, Qt::green );
+}
 
-            }
+void MainWindow::draw_corners(){
+    for(uint i = 0; i<HarrisList.size();i++){
+        if(fixedPoints.at<uchar>(HarrisList[i].p.y, HarrisList[i].p.x) == 0)
+            visorS->drawSquare(QPointF(HarrisList[i].p.x,HarrisList[i].p.y), 2,2, Qt::red);
+        else{
+            visorS->drawSquare(QPointF(HarrisList[i].p.x,HarrisList[i].p.y), 2,2, Qt::green);
+            int xR = HarrisList[i].p.x - disparity.at<float>(HarrisList[i].p.y, HarrisList[i].p.x);
+            visorD->drawSquare(QPointF(xR ,HarrisList[i].p.y), 2,2, Qt::green);
         }
     }
-*/
 }

@@ -63,6 +63,7 @@ private:
     Mat regions, borders;
     Mat cornersLeft;
     Mat fixedPoints;
+    Mat disparity;
     std::vector<region> regionsList;
     std::vector<QMap<int,pair>> maps;
     std::vector<pointHarris> HarrisList;
@@ -79,6 +80,7 @@ public slots:
     void initDisparity_image();
     void propDisparity_image();
     void find_corners();
+    void draw_corners();
 };
 
 
