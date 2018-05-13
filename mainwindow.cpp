@@ -19,7 +19,7 @@ MainWindow::MainWindow(QWidget *parent) :
 
     colorImage.create(240,320,CV_8UC3);
     grayImage.create(240,320,CV_8UC1);
-    //destColorImage.create(240,320,CV_8UC3);
+    imageS2ColorImage.create(240,320,CV_8UC3);
     destGrayImage.create(240,320,CV_8UC1);
     gray2ColorImage.create(240,320,CV_8UC3);
     destGray2ColorImage.create(240,320,CV_8UC3);
@@ -37,7 +37,6 @@ MainWindow::MainWindow(QWidget *parent) :
 
     connect(ui->loadButton,SIGNAL(clicked(bool)),this,SLOT(load_image()));
     connect(ui->initDButton,SIGNAL(clicked(bool)),this,SLOT(initDisparity_image()));
-    connect(ui->propDButton,SIGNAL(clicked(bool)),this,SLOT(propDisparity_image()));
 
     timer.start(60);
 
@@ -55,8 +54,6 @@ MainWindow::~MainWindow()
     delete visorD2;
     delete imgS2;
     delete imgD2;
-
-
 }
 
 void MainWindow::compute()
@@ -65,17 +62,22 @@ void MainWindow::compute()
     regionsList.clear();
     maps.clear();
 
-    //segmentation_image();
-    //draw_borders();
-
     if(ui->checkBoxCorners->isChecked()){
         draw_corners();
     }
 
+    if(ui->propDButton->isChecked()){
+        qDebug()<<"Yupi";
+        propDisparity_image();
+    }
+
     cvtColor(grayImage,gray2ColorImage, CV_GRAY2RGB);
     cvtColor(destGrayImage,destGray2ColorImage, CV_GRAY2RGB);
+    cvtColor(imageS2,imageS2ColorImage, CV_GRAY2RGB);
+
     memcpy(imgS->bits(), gray2ColorImage.data , 320*240*3*sizeof(uchar));
     memcpy(imgD->bits(), destGray2ColorImage.data , 320*240*3*sizeof(uchar));
+    memcpy(imgS2->bits(), imageS2ColorImage.data , 320*240*3*sizeof(uchar));
 
     visorS->update();
     visorD->update();
@@ -94,7 +96,7 @@ void MainWindow::load_image()
            return;
     else {
            colorImage = imread(files[0].toStdString(), CV_LOAD_IMAGE_COLOR);
-           //int anchura = colorImage.cols;
+           width = colorImage.cols;
            //g=3*d*w/320
            //donde g es nivel de gris que hay que saturar entre 0y 255 para que no se pase
            //d es la disparidad, no puede ser negativa, siempre >= 0
@@ -165,37 +167,23 @@ void MainWindow::create_region(Point inicial, int numberRegion){
         pAct = list[i];
 
         if(pAct.x >=0 && pAct.x<grayImage.cols && pAct.y>=0 && pAct.y<grayImage.rows && regions.at<int>(pAct) == -1){
-            //if(ui->checkBoxStatistics->isChecked()){
+            avNew = (av * cont + grayImage.at<uchar>(pAct))/(cont+1);
 
-                avNew = (av * cont + grayImage.at<uchar>(pAct))/(cont+1);
+            dtNew = dt + (grayImage.at<uchar>(pAct)-av)*(grayImage.at<uchar>(pAct)-avNew);
 
-                dtNew = dt + (grayImage.at<uchar>(pAct)-av)*(grayImage.at<uchar>(pAct)-avNew);
-
-                if(sqrt(dtNew/(cont+1)) < 20.0)
-                {
-                    av = avNew;
-                    dt = dtNew;
-                    cont++;
-                    regions.at<int>(pAct.y, pAct.x) = numberRegion;
-                    if(borders.at<uchar>(pAct)==0){
-                        list.push_back(Point(pAct.x-1, pAct.y));
-                        list.push_back(Point(pAct.x, pAct.y-1));
-                        list.push_back(Point(pAct.x+1, pAct.y));
-                        list.push_back(Point(pAct.x, pAct.y+1));
-                    }
+            if(sqrt(dtNew/(cont+1)) < 20.0)
+            {
+                av = avNew;
+                dt = dtNew;
+                cont++;
+                regions.at<int>(pAct.y, pAct.x) = numberRegion;
+                if(borders.at<uchar>(pAct)==0){
+                    list.push_back(Point(pAct.x-1, pAct.y));
+                    list.push_back(Point(pAct.x, pAct.y-1));
+                    list.push_back(Point(pAct.x+1, pAct.y));
+                    list.push_back(Point(pAct.x, pAct.y+1));
                 }
-            /*}else{
-                if(abs(grayImage.at<uchar>(pAct.y, pAct.x)-valueGray) < 30)
-                {
-                    regions.at<int>(pAct.y, pAct.x) = numberRegion;
-                    if(borders.at<uchar>(pAct)==0){
-                        list.push_back(Point(pAct.x-1, pAct.y));
-                        list.push_back(Point(pAct.x, pAct.y-1));
-                        list.push_back(Point(pAct.x+1, pAct.y));
-                        list.push_back(Point(pAct.x, pAct.y+1));
-                    }
-                }
-            }*/
+            }
         }
         i++;
     }
@@ -205,33 +193,13 @@ void MainWindow::create_region(Point inicial, int numberRegion){
     region.gray = grayImage.at<uchar>(inicial);
     region.id = numberRegion;
     region.numPoints = list.size();
+    region.numFixedPoints = 0;
+    region.avgDisparity = 0.0;
     regionsList.push_back(region);
     list.clear();
 
 }
 
-void MainWindow::draw_borders(){
-    //if(ui->checkBoxBorder->isChecked()){
-        find_borders();
-
-        //if(ui->checkBoxMerge->isChecked())
-            merge();
-    //}
-
-    //for (int var = 0; var < regions.rows; ++var) {
-       // for (int var2 = 0; var2 < regions.cols; ++var2) {
-            //destGrayImage.at<uchar>(var,var2) = regionsList.at(regions.at<int>(var,var2)).gray;
-        //}
-    //}
-
-    /*if(ui->checkBoxCorners->isChecked()){
-        for(uint i = 0; i<regionsList.size();i++){
-            for(uint j = 0; j<regionsList.at(i).frontier.size(); j++){
-                visorD->drawSquare(QPointF(regionsList.at(i).frontier.at(j).x-1,regionsList.at(i).frontier.at(j).y-1), 2,2, Qt::green );
-            }
-        }
-    }*/
-}
 
 void MainWindow::find_borders(){
     bool border = false;
@@ -355,14 +323,29 @@ void MainWindow::merge(){
 
 
 void MainWindow::initDisparity_image(){
-    //segmentation_image();
-    //draw_borders();
-
+    segmentation_image();
+    find_borders();
+    merge();
     find_corners();
+    draw_disparity();
 }
 
 void MainWindow::propDisparity_image(){
-
+    for(uint t = 0; t<HarrisList.size();t++){
+        if(fixedPoints.at<uchar>(HarrisList[t].p.y, HarrisList[t].p.x) == 0){
+            float avg = 0.0;
+            int cont = 0;
+            for(int i = HarrisList[t].p.y-3; i< HarrisList[t].p.y +3 ; i++){
+                for(int j = HarrisList[t].p.x-3; j<HarrisList[t].p.x+3; j++){
+                    if(regions.at<int>(HarrisList[t].p.y, HarrisList[t].p.x) == regions.at<int>(i,j)){
+                        avg = (avg * cont + disparity.at<float>(i,j)) / (cont +1);
+                        cont++;
+                    }
+                }
+            }
+            disparity.at<float>(HarrisList[t].p.y, HarrisList[t].p.x) = avg;
+        }
+    }
 }
 
 
@@ -373,13 +356,13 @@ void MainWindow::find_corners(){
 
     fixedPoints.setTo(0);
     disparity.setTo(0);
+    imageS2.setTo(0);
 
     cornerHarris(grayImage, cornersLeft, 5, 3, 0.04);
 
-
     for(int i = 0; i<cornersLeft.rows; i++){
         for(int j = 0; j<cornersLeft.cols; j++){
-            if(cornersLeft.at<float>(i,j)>=0.00001){
+            if(cornersLeft.at<float>(i,j)>=0.000001){
                 pointHarris pH;
                 pH.HarrisValue = cornersLeft.at<float>(i,j);
                 pH.p = Point(j,i);
@@ -389,7 +372,6 @@ void MainWindow::find_corners(){
     }
 
     std::sort(HarrisList.begin(), HarrisList.end(), compareHarris);
-
 
     for(uint k = 0; k<HarrisList.size(); k++){
         for(uint l = k+1; l < HarrisList.size(); l++){
@@ -413,7 +395,16 @@ void MainWindow::find_corners(){
             minMaxLoc(result, &min, &max, &pMin, &pMax);
             if(max>0.9){
                 fixedPoints.at<uchar>(HarrisList[m].p.y, HarrisList[m].p.x) = 1;
-                disparity.at<float>(HarrisList[m].p.y, HarrisList[m].p.x) = HarrisList[m].p.x - (pMax.x + 6) ;
+                disparity.at<float>(HarrisList[m].p.y, HarrisList[m].p.x) = HarrisList[m].p.x - (pMax.x + 6);
+
+                float avg = regionsList[regions.at<int>(HarrisList[m].p.y, HarrisList[m].p.x)].avgDisparity;
+                avg = (avg * regionsList[regions.at<int>(HarrisList[m].p.y, HarrisList[m].p.x)].numFixedPoints
+                        + disparity.at<float>(HarrisList[m].p.y, HarrisList[m].p.x))/
+                        (regionsList[regions.at<int>(HarrisList[m].p.y, HarrisList[m].p.x)].numFixedPoints + 1);
+
+                //Se actualiza la disparidad media y el número de puntos fijos
+                regionsList[regions.at<int>(HarrisList[m].p.y, HarrisList[m].p.x)].avgDisparity = avg;
+                regionsList[regions.at<int>(HarrisList[m].p.y, HarrisList[m].p.x)].numFixedPoints++;
             }
         }
     }
@@ -427,6 +418,31 @@ void MainWindow::draw_corners(){
             visorS->drawSquare(QPointF(HarrisList[i].p.x,HarrisList[i].p.y), 2,2, Qt::green);
             int xR = HarrisList[i].p.x - disparity.at<float>(HarrisList[i].p.y, HarrisList[i].p.x);
             visorD->drawSquare(QPointF(xR ,HarrisList[i].p.y), 2,2, Qt::green);
+        }
+    }
+}
+
+
+void MainWindow::draw_disparity(){
+    for(int i = 0; i< imageS2.rows; i++){
+        for(int j = 0; j< imageS2.cols; j++){
+            if(fixedPoints.at<uchar>(i,j) == 0){
+                float disp = regionsList[regions.at<int>(i,j)].avgDisparity;
+                disparity.at<float>(i,j) = disp;
+                int gray = disp * 3 * width/320;
+                if(gray>255)
+                    gray = 255;
+                if(gray<0)
+                    gray = 0;
+                imageS2.at<uchar>(i,j) = gray;
+            }else{
+                int gray = disparity.at<float>(i,j) * 3 * width/320;
+                if(gray>255)
+                    gray = 255;
+                if(gray<0)
+                    gray = 0;
+                imageS2.at<uchar>(i,j) = gray;
+            }
         }
     }
 }

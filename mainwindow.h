@@ -40,6 +40,8 @@ private:
         int id;
         Point first;
         int numPoints;
+        int numFixedPoints;
+        float avgDisparity;
         uchar gray;
         std::vector<Point> frontier;
     };
@@ -59,7 +61,7 @@ private:
     RCDraw *visorS2, *visorD2;
     QImage *imgS2, *imgD2;
     Mat colorImage, grayImage, destColorImage, destGrayImage, imageS2, imageD2;
-    Mat gray2ColorImage, destGray2ColorImage;
+    Mat gray2ColorImage, destGray2ColorImage, imageS2ColorImage;
     Mat regions, borders;
     Mat cornersLeft;
     Mat fixedPoints;
@@ -67,13 +69,13 @@ private:
     std::vector<region> regionsList;
     std::vector<QMap<int,pair>> maps;
     std::vector<pointHarris> HarrisList;
+    int width; //anchura
 
 public slots:
     void compute();
     void load_image();
     void segmentation_image();
     void create_region(Point inicial, int numberRegion);
-    void draw_borders();
     void find_borders();
     void merge();
 
@@ -81,6 +83,7 @@ public slots:
     void propDisparity_image();
     void find_corners();
     void draw_corners();
+    void draw_disparity();
 };
 
 
