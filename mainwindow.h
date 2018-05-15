@@ -13,6 +13,7 @@
 #include <rcdraw.h>
 #include <QFileDialog>
 
+#define WIN 15
 
 using namespace cv;
 
@@ -60,8 +61,8 @@ private:
     QImage *imgS, *imgD;
     RCDraw *visorS2, *visorD2;
     QImage *imgS2, *imgD2;
-    Mat colorImage, grayImage, destColorImage, destGrayImage, imageS2, imageD2;
-    Mat gray2ColorImage, destGray2ColorImage, imageS2ColorImage;
+    Mat colorImage, grayImage, destColorImage, destGrayImage, imageS2, imageD2, dImage;
+    Mat gray2ColorImage, destGray2ColorImage, imageS2ColorImage, imageD2ColorImage;
     Mat regions, borders;
     Mat cornersLeft;
     Mat fixedPoints;
@@ -74,6 +75,8 @@ private:
 public slots:
     void compute();
     void load_image();
+    void load_image_disparity();
+    void show_disparity(QPointF p, int w, int h);
     void segmentation_image();
     void create_region(Point inicial, int numberRegion);
     void find_borders();

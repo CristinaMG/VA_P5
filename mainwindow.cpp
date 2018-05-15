@@ -19,7 +19,9 @@ MainWindow::MainWindow(QWidget *parent) :
 
     colorImage.create(240,320,CV_8UC3);
     grayImage.create(240,320,CV_8UC1);
+    dImage.create(240,320,CV_8UC1);
     imageS2ColorImage.create(240,320,CV_8UC3);
+    imageD2ColorImage.create(240,320,CV_8UC3);
     destGrayImage.create(240,320,CV_8UC1);
     gray2ColorImage.create(240,320,CV_8UC3);
     destGray2ColorImage.create(240,320,CV_8UC3);
@@ -38,6 +40,9 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(ui->loadButton,SIGNAL(clicked(bool)),this,SLOT(load_image()));
     connect(ui->initDButton,SIGNAL(clicked(bool)),this,SLOT(initDisparity_image()));
 
+    connect(ui->loadGroundButton, SIGNAL(clicked(bool)),this, SLOT(load_image_disparity()));
+
+    connect(visorS2, SIGNAL(windowSelected(QPointF,int,int)), this, SLOT(show_disparity(QPointF, int, int)));
     timer.start(60);
 
 }
@@ -58,8 +63,6 @@ MainWindow::~MainWindow()
 
 void MainWindow::compute()
 {
-    regions.setTo(-1);
-    regionsList.clear();
     maps.clear();
 
     if(ui->checkBoxCorners->isChecked()){
@@ -67,17 +70,21 @@ void MainWindow::compute()
     }
 
     if(ui->propDButton->isChecked()){
-        qDebug()<<"Yupi";
         propDisparity_image();
     }
+
+    draw_disparity();
 
     cvtColor(grayImage,gray2ColorImage, CV_GRAY2RGB);
     cvtColor(destGrayImage,destGray2ColorImage, CV_GRAY2RGB);
     cvtColor(imageS2,imageS2ColorImage, CV_GRAY2RGB);
+    cvtColor(imageD2,imageD2ColorImage, CV_GRAY2RGB);
+
 
     memcpy(imgS->bits(), gray2ColorImage.data , 320*240*3*sizeof(uchar));
     memcpy(imgD->bits(), destGray2ColorImage.data , 320*240*3*sizeof(uchar));
     memcpy(imgS2->bits(), imageS2ColorImage.data , 320*240*3*sizeof(uchar));
+    memcpy(imgD2->bits(), imageD2ColorImage.data , 320*240*3*sizeof(uchar));
 
     visorS->update();
     visorD->update();
@@ -97,10 +104,6 @@ void MainWindow::load_image()
     else {
            colorImage = imread(files[0].toStdString(), CV_LOAD_IMAGE_COLOR);
            width = colorImage.cols;
-           //g=3*d*w/320
-           //donde g es nivel de gris que hay que saturar entre 0y 255 para que no se pase
-           //d es la disparidad, no puede ser negativa, siempre >= 0
-           //w es el ancho de la imagen que recibimos inicialmente(anchura)
            cv::resize(colorImage, colorImage, Size(320,240));
            cvtColor(colorImage, grayImage, CV_BGR2GRAY);
 
@@ -109,6 +112,22 @@ void MainWindow::load_image()
            cvtColor(colorImage, destGrayImage, CV_BGR2GRAY);
 
     }
+}
+
+void MainWindow::load_image_disparity(){
+    QString file = QFileDialog::getOpenFileName(this,
+           tr("Open File"), "",
+           tr("All Files (*)"));
+
+   dImage = imread(file.toStdString(), CV_LOAD_IMAGE_COLOR);
+   cv::resize(dImage, dImage, Size(320,240));
+   cvtColor(dImage, imageD2, CV_BGR2GRAY);
+}
+
+
+void MainWindow::show_disparity(QPointF p, int w, int h){
+    ui->lcdNumber->display(imageS2.at<uchar>(p.y(), p.x()));
+    ui->lcdNumber_2->display(imageD2.at<uchar>(p.y(), p.x()));
 }
 
 void MainWindow::segmentation_image()
@@ -159,7 +178,6 @@ void MainWindow::create_region(Point inicial, int numberRegion){
     Point pAct;
     uint i =0;
     list.push_back(inicial);
-    //uchar valueGray = grayImage.at<uchar>(inicial);
     float av = 0.0, avNew = 0.0, dt = 0.0, dtNew = 0.0;
     int cont = 0;
 
@@ -320,30 +338,32 @@ void MainWindow::merge(){
 }
 
 
-
-
 void MainWindow::initDisparity_image(){
+    regions.setTo(-1);
+    regionsList.clear();
     segmentation_image();
     find_borders();
     merge();
     find_corners();
-    draw_disparity();
 }
 
 void MainWindow::propDisparity_image(){
-    for(uint t = 0; t<HarrisList.size();t++){
-        if(fixedPoints.at<uchar>(HarrisList[t].p.y, HarrisList[t].p.x) == 0){
-            float avg = 0.0;
-            int cont = 0;
-            for(int i = HarrisList[t].p.y-3; i< HarrisList[t].p.y +3 ; i++){
-                for(int j = HarrisList[t].p.x-3; j<HarrisList[t].p.x+3; j++){
-                    if(regions.at<int>(HarrisList[t].p.y, HarrisList[t].p.x) == regions.at<int>(i,j)){
-                        avg = (avg * cont + disparity.at<float>(i,j)) / (cont +1);
-                        cont++;
+    for(int k = 3; k<fixedPoints.rows-3; k++){
+        for(int l = 3; l<fixedPoints.cols-3; l++){
+            if(fixedPoints.at<uchar>(k,l) == 0){
+                float avg = 0.0;
+                float cont = 0;
+                for(int i = k-3; i<= k +3 ; i++){
+                    for(int j = l-3; j<=l+3; j++){
+
+                        if(regions.at<int>(k,l) == regions.at<int>(i,j)){
+                            avg = (avg * cont + disparity.at<float>(i,j)) / (cont + 1.);
+                            cont++;
+                        }
                     }
                 }
+                disparity.at<float>(k, l) = avg;
             }
-            disparity.at<float>(HarrisList[t].p.y, HarrisList[t].p.x) = avg;
         }
     }
 }
@@ -385,26 +405,35 @@ void MainWindow::find_corners(){
 
 
     for(uint m = 0; m<HarrisList.size(); m++){
-        if(HarrisList[m].p.x > 5 && HarrisList[m].p.x < 314 && HarrisList[m].p.y > 5 && HarrisList[m].p.y <234){
-            Mat stripe = destGrayImage(cv::Rect(0, HarrisList[m].p.y-6, HarrisList[m].p.x, 13));
-            Mat patch = grayImage(cv::Rect(HarrisList[m].p.x-6, HarrisList[m].p.y-6, 13, 13));
+        if(HarrisList[m].p.x >= WIN/2 && HarrisList[m].p.x < 320-WIN/2 && HarrisList[m].p.y >= WIN/2 && HarrisList[m].p.y <240-WIN/2){
+            Mat stripe = destGrayImage(cv::Rect(0, HarrisList[m].p.y-WIN/2, HarrisList[m].p.x, WIN));
+            Mat patch = grayImage(cv::Rect(HarrisList[m].p.x-WIN/2, HarrisList[m].p.y-WIN/2, WIN, WIN));
             Mat result;
             matchTemplate(stripe, patch, result, CV_TM_CCOEFF_NORMED);
             double min, max;
             Point pMin, pMax;
             minMaxLoc(result, &min, &max, &pMin, &pMax);
-            if(max>0.9){
+            if(max>0.95){
                 fixedPoints.at<uchar>(HarrisList[m].p.y, HarrisList[m].p.x) = 1;
-                disparity.at<float>(HarrisList[m].p.y, HarrisList[m].p.x) = HarrisList[m].p.x - (pMax.x + 6);
+                disparity.at<float>(HarrisList[m].p.y, HarrisList[m].p.x) = HarrisList[m].p.x - (pMax.x + WIN/2);
 
                 float avg = regionsList[regions.at<int>(HarrisList[m].p.y, HarrisList[m].p.x)].avgDisparity;
                 avg = (avg * regionsList[regions.at<int>(HarrisList[m].p.y, HarrisList[m].p.x)].numFixedPoints
                         + disparity.at<float>(HarrisList[m].p.y, HarrisList[m].p.x))/
-                        (regionsList[regions.at<int>(HarrisList[m].p.y, HarrisList[m].p.x)].numFixedPoints + 1);
+                        (regionsList[regions.at<int>(HarrisList[m].p.y, HarrisList[m].p.x)].numFixedPoints + 1.);
 
                 //Se actualiza la disparidad media y el número de puntos fijos
                 regionsList[regions.at<int>(HarrisList[m].p.y, HarrisList[m].p.x)].avgDisparity = avg;
                 regionsList[regions.at<int>(HarrisList[m].p.y, HarrisList[m].p.x)].numFixedPoints++;
+            }
+        }
+    }
+
+    //Asignar disparidad a todos los puntos que no tenían
+    for(int i = 0; i< disparity.rows; i++){
+        for(int j = 0; j<disparity.cols; j++){
+            if(fixedPoints.at<uchar>(i,j)==0){
+                disparity.at<float>(i,j) = regionsList[regions.at<int>(i,j)].avgDisparity;
             }
         }
     }
@@ -422,27 +451,15 @@ void MainWindow::draw_corners(){
     }
 }
 
-
 void MainWindow::draw_disparity(){
     for(int i = 0; i< imageS2.rows; i++){
         for(int j = 0; j< imageS2.cols; j++){
-            if(fixedPoints.at<uchar>(i,j) == 0){
-                float disp = regionsList[regions.at<int>(i,j)].avgDisparity;
-                disparity.at<float>(i,j) = disp;
-                int gray = disp * 3 * width/320;
-                if(gray>255)
-                    gray = 255;
-                if(gray<0)
-                    gray = 0;
-                imageS2.at<uchar>(i,j) = gray;
-            }else{
-                int gray = disparity.at<float>(i,j) * 3 * width/320;
-                if(gray>255)
-                    gray = 255;
-                if(gray<0)
-                    gray = 0;
-                imageS2.at<uchar>(i,j) = gray;
-            }
+            int gray = disparity.at<float>(i,j) * 3. * width/320.;
+            if(gray>255)
+                gray = 255;
+            if(gray<0)
+                gray = 0;
+            imageS2.at<uchar>(i,j) = gray;
         }
     }
 }
