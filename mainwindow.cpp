@@ -406,25 +406,39 @@ void MainWindow::find_corners(){
 
     for(uint m = 0; m<HarrisList.size(); m++){
         if(HarrisList[m].p.x >= WIN/2 && HarrisList[m].p.x < 320-WIN/2 && HarrisList[m].p.y >= WIN/2 && HarrisList[m].p.y <240-WIN/2){
-            Mat stripe = destGrayImage(cv::Rect(0, HarrisList[m].p.y-WIN/2, HarrisList[m].p.x, WIN));
-            Mat patch = grayImage(cv::Rect(HarrisList[m].p.x-WIN/2, HarrisList[m].p.y-WIN/2, WIN, WIN));
+            //Comprobación de la imagen izda a la dcha
+            Mat stripeR = destGrayImage(cv::Rect(0, HarrisList[m].p.y-WIN/2, HarrisList[m].p.x, WIN));
+            Mat patchL = grayImage(cv::Rect(HarrisList[m].p.x-WIN/2, HarrisList[m].p.y-WIN/2, WIN, WIN));
             Mat result;
-            matchTemplate(stripe, patch, result, CV_TM_CCOEFF_NORMED);
+            matchTemplate(stripeR, patchL, result, CV_TM_CCOEFF_NORMED);
             double min, max;
             Point pMin, pMax;
             minMaxLoc(result, &min, &max, &pMin, &pMax);
-            if(max>0.95){
-                fixedPoints.at<uchar>(HarrisList[m].p.y, HarrisList[m].p.x) = 1;
-                disparity.at<float>(HarrisList[m].p.y, HarrisList[m].p.x) = HarrisList[m].p.x - (pMax.x + WIN/2);
 
-                float avg = regionsList[regions.at<int>(HarrisList[m].p.y, HarrisList[m].p.x)].avgDisparity;
-                avg = (avg * regionsList[regions.at<int>(HarrisList[m].p.y, HarrisList[m].p.x)].numFixedPoints
-                        + disparity.at<float>(HarrisList[m].p.y, HarrisList[m].p.x))/
-                        (regionsList[regions.at<int>(HarrisList[m].p.y, HarrisList[m].p.x)].numFixedPoints + 1.);
+            if(max>0.9){
+                //Comprobación de la imagen dcha a la izda
+                Mat stripeL = grayImage(cv::Rect(0, HarrisList[m].p.y-WIN/2, 320, WIN));
+                Mat patchR = destGrayImage(cv::Rect(pMax.x, HarrisList[m].p.y-WIN/2, WIN, WIN));
+                Mat result2;
+                matchTemplate(stripeL, patchR, result2, CV_TM_CCOEFF_NORMED);
+                double min2, max2;
+                Point pMin2, pMax2;
+                minMaxLoc(result2, &min2, &max2, &pMin2, &pMax2);
 
-                //Se actualiza la disparidad media y el número de puntos fijos
-                regionsList[regions.at<int>(HarrisList[m].p.y, HarrisList[m].p.x)].avgDisparity = avg;
-                regionsList[regions.at<int>(HarrisList[m].p.y, HarrisList[m].p.x)].numFixedPoints++;
+                if(abs((pMax2.x+WIN/2)-HarrisList[m].p.x) < 4){
+
+                    fixedPoints.at<uchar>(HarrisList[m].p.y, HarrisList[m].p.x) = 1;
+                    disparity.at<float>(HarrisList[m].p.y, HarrisList[m].p.x) = HarrisList[m].p.x - (pMax.x + WIN/2);
+
+                    float avg = regionsList[regions.at<int>(HarrisList[m].p.y, HarrisList[m].p.x)].avgDisparity;
+                    avg = (avg * regionsList[regions.at<int>(HarrisList[m].p.y, HarrisList[m].p.x)].numFixedPoints
+                            + disparity.at<float>(HarrisList[m].p.y, HarrisList[m].p.x))/
+                            (regionsList[regions.at<int>(HarrisList[m].p.y, HarrisList[m].p.x)].numFixedPoints + 1.);
+
+                    //Se actualiza la disparidad media y el número de puntos fijos
+                    regionsList[regions.at<int>(HarrisList[m].p.y, HarrisList[m].p.x)].avgDisparity = avg;
+                    regionsList[regions.at<int>(HarrisList[m].p.y, HarrisList[m].p.x)].numFixedPoints++;
+                }
             }
         }
     }
